@@ -2569,6 +2569,62 @@ func (x *MatchExpr) GetCount() int64 {
 	return 0
 }
 
+// AnyAllExpr is hand-added pending proto regeneration (make generated-proto-without-cpp).
+type AnyAllExpr struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	ColumnInfo           *ColumnInfo `protobuf:"bytes,1,opt,name=column_info,json=columnInfo,proto3" json:"column_info,omitempty"`
+	Op                   OpType      `protobuf:"varint,2,opt,name=op,proto3,enum=milvus.proto.plan.OpType" json:"op,omitempty"`
+	IsAny                bool        `protobuf:"varint,3,opt,name=is_any,json=isAny,proto3" json:"is_any,omitempty"`
+	Value                *GenericValue `protobuf:"bytes,4,opt,name=value,proto3" json:"value,omitempty"`
+	TemplateVariableName string      `protobuf:"bytes,5,opt,name=template_variable_name,json=templateVariableName,proto3" json:"template_variable_name,omitempty"`
+}
+
+func (x *AnyAllExpr) Reset()         {}
+func (x *AnyAllExpr) String() string { return protoimpl.X.MessageStringOf(x) }
+func (*AnyAllExpr) ProtoMessage()     {}
+
+func (x *AnyAllExpr) ProtoReflect() protoreflect.Message {
+	return nil
+}
+
+func (x *AnyAllExpr) GetColumnInfo() *ColumnInfo {
+	if x != nil {
+		return x.ColumnInfo
+	}
+	return nil
+}
+
+func (x *AnyAllExpr) GetOp() OpType {
+	if x != nil {
+		return x.Op
+	}
+	return OpType_Invalid
+}
+
+func (x *AnyAllExpr) GetIsAny() bool {
+	if x != nil {
+		return x.IsAny
+	}
+	return false
+}
+
+func (x *AnyAllExpr) GetValue() *GenericValue {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+func (x *AnyAllExpr) GetTemplateVariableName() string {
+	if x != nil {
+		return x.TemplateVariableName
+	}
+	return ""
+}
+
 type AlwaysTrueExpr struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2984,6 +3040,13 @@ func (x *Expr) GetMatchExpr() *MatchExpr {
 	return nil
 }
 
+func (x *Expr) GetAnyAllExpr() *AnyAllExpr {
+	if x, ok := x.GetExpr().(*Expr_AnyAllExpr); ok {
+		return x.AnyAllExpr
+	}
+	return nil
+}
+
 func (x *Expr) GetIsTemplate() bool {
 	if x != nil {
 		return x.IsTemplate
@@ -3075,6 +3138,10 @@ type Expr_MatchExpr struct {
 	MatchExpr *MatchExpr `protobuf:"bytes,21,opt,name=match_expr,json=matchExpr,proto3,oneof"`
 }
 
+type Expr_AnyAllExpr struct {
+	AnyAllExpr *AnyAllExpr `protobuf:"bytes,22,opt,name=any_all_expr,json=anyAllExpr,proto3,oneof"`
+}
+
 func (*Expr_TermExpr) isExpr_Expr() {}
 
 func (*Expr_UnaryExpr) isExpr_Expr() {}
@@ -3114,6 +3181,8 @@ func (*Expr_TimestamptzArithCompareExpr) isExpr_Expr() {}
 func (*Expr_ElementFilterExpr) isExpr_Expr() {}
 
 func (*Expr_MatchExpr) isExpr_Expr() {}
+
+func (*Expr_AnyAllExpr) isExpr_Expr() {}
 
 type VectorANNS struct {
 	state         protoimpl.MessageState

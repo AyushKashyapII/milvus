@@ -25,6 +25,7 @@ expr:
 	| RANDOMSAMPLE'(' expr ')'						     						                            # RandomSample
 	| ElementFilter'('Identifier',' expr')'                                	                                # ElementFilter
 	| op=(MATCH_ALL | MATCH_ANY) '(' Identifier ',' expr ')'                                                 # MatchSimple
+	| expr op=(LT | LE | GT | GE | EQ | NE) quantifier=(ANY | ALL) '(' Identifier ')'                       # AnyAll
 	| op=(MATCH_LEAST | MATCH_MOST | MATCH_EXACT) '(' Identifier ',' expr ',' THRESHOLD ASSIGN IntegerConstant ')'  # MatchThreshold
 	| expr POW expr											                                                # Power
 	| op = (ADD | SUB | BNOT | NOT) expr					                                                # Unary
@@ -73,6 +74,8 @@ PHRASEMATCH: 'phrase_match'|'PHRASE_MATCH';
 RANDOMSAMPLE: 'random_sample' | 'RANDOM_SAMPLE';
 MATCH_ALL: 'match_all' | 'MATCH_ALL';
 MATCH_ANY: 'match_any' | 'MATCH_ANY';
+ANY: 'any' | 'ANY';
+ALL: 'all' | 'ALL';
 MATCH_LEAST: 'match_least' | 'MATCH_LEAST';
 MATCH_MOST: 'match_most' | 'MATCH_MOST';
 MATCH_EXACT: 'match_exact' | 'MATCH_EXACT';

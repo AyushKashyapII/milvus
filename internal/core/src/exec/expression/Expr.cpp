@@ -38,6 +38,7 @@
 #include "exec/expression/LogicalUnaryExpr.h"
 #include "exec/expression/MatchExpr.h"
 #include "exec/expression/NullExpr.h"
+#include "exec/expression/AnyAllExpr.h"
 #include "exec/expression/TermExpr.h"
 #include "exec/expression/TimestamptzArithCompareExpr.h"
 #include "exec/expression/UnaryExpr.h"
@@ -452,6 +453,18 @@ CompileExpression(const expr::TypedExprPtr& expr,
             context->get_segment(),
             context->get_active_count(),
             context->query_config()->get_expr_batch_size());
+    } else if (auto any_all_expr = std::dynamic_pointer_cast<
+                   const milvus::expr::AnyAllFilterExpr>(expr)) {
+        result = std::make_shared<PhyAnyAllFilterExpr>(
+            compiled_inputs,
+            any_all_expr,
+            "PhyAnyAllFilterExpr",
+            op_ctx,
+            context->get_segment(),
+            context->get_active_count(),
+            context->get_query_timestamp(),
+            context->query_config()->get_expr_batch_size(),
+            context->get_consistency_level());
     } else {
         ThrowInfo(ExprInvalid, "unsupport expr: ", expr->ToString());
     }

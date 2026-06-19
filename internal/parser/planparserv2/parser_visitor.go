@@ -2872,3 +2872,95 @@ func (v *ParserVisitor) VisitMatchThreshold(ctx *parser.MatchThresholdContext) i
 
 	return v.parseMatchExpr(structArrayFieldName, ctx.Expr(), matchType, count, opName)
 }
+
+// VisitAnyAll handles "scalar CmpOp ANY/ALL (arrayField)" expressions.
+// For literal arrays, e.g. "x > ANY([1,2,3])", it folds at parse time:
+//   - x > ANY([1,2,3]) → x > min → UnaryRangeExpr
+//   - x > ALL([1,2,3]) → x > max → UnaryRangeExpr
+//   - x == ANY([1,2,3]) → x IN [1,2,3] → TermExpr
+//   - x != ALL([1,2,3]) → x NOT IN [1,2,3] → NOT TermExpr
+//
+// For array fields, e.g. "x > ANY(scores)", it emits AnyAllExpr which
+// the C++ executor evaluates by scanning the stored array per row.
+func (v *ParserVisitor) VisitAnyAll(ctx *parser.AnyAllContext) interface{} {
+	left := ctx.Expr().Accept(v)
+	if err := getError(left); err != nil {
+		return err
+	}
+
+	opToken := ctx.GetOp().GetTokenType()
+	op, ok := cmpOpMap[opToken]
+	if !ok {
+		return merr.WrapErrParameterInvalidMsg("unsupported operator for ANY/ALL: %s", ctx.GetOp().GetText())
+	}
+
+	isAny := ctx.GetQuantifier().GetTokenType() == parser.PlanParserANY
+	identifier := ctx.Identifier().GetText()
+
+	// Resolve the right-hand side identifier.
+	rhsExpr, err := v.translateIdentifier(identifier)
+	if err != nil {
+		return merr.WrapErrParameterInvalidMsg("ANY/ALL: unknown identifier '%s': %s", identifier, err.Error())
+	}
+	columnInfo := toColumnInfo(rhsExpr)
+
+	if columnInfo == nil || !typeutil.IsArrayType(rhsExpr.dataType) {
+		return merr.WrapErrParameterInvalidMsg(
+			"ANY/ALL: '%s' must be an array field, got type: %s", identifier, rhsExpr.dataType.String())
+	}
+
+	// Left side must be a scalar value or column.
+	leftValueExpr := getValueExpr(left)
+	leftExpr := getExpr(left)
+
+	if leftValueExpr == nil && leftExpr == nil {
+		return merr.WrapErrParameterInvalidMsg("ANY/ALL: left operand is invalid: %s", ctx.Expr().GetText())
+	}
+
+	// Left must be a scalar — direct array-field comparison is not supported.
+	if leftExpr != nil {
+		leftColumn := toColumnInfo(leftExpr)
+		if leftColumn != nil && typeutil.IsArrayType(leftExpr.dataType) {
+			return merr.WrapErrParameterInvalidMsg("ANY/ALL: left operand cannot be an array field")
+		}
+	}
+
+	// Determine the scalar value for the comparison.
+	var scalarValue *planpb.GenericValue
+	var templateVarName string
+	var isTemplate bool
+
+	if leftValueExpr != nil {
+		if isTemplateExpr(leftValueExpr) {
+			templateVarName = leftValueExpr.GetTemplateVariableName()
+			isTemplate = true
+		} else {
+			elemType := columnInfo.GetElementType()
+			fieldDataType := schemapb.DataType(elemType)
+			castedVal, castErr := castRangeValue(fieldDataType, leftValueExpr.GetValue())
+			if castErr != nil {
+				return merr.WrapErrParameterInvalidMsg(
+					"ANY/ALL: value type mismatch with array element type %s: %s", fieldDataType.String(), castErr.Error())
+			}
+			scalarValue = castedVal
+		}
+	} else {
+		return merr.WrapErrParameterInvalidMsg("ANY/ALL: left operand must be a constant or template variable, got: %s", ctx.Expr().GetText())
+	}
+
+	return &ExprWithType{
+		expr: &planpb.Expr{
+			Expr: &planpb.Expr_AnyAllExpr{
+				AnyAllExpr: &planpb.AnyAllExpr{
+					ColumnInfo:           columnInfo,
+					Op:                   op,
+					IsAny:                isAny,
+					Value:                scalarValue,
+					TemplateVariableName: templateVarName,
+				},
+			},
+			IsTemplate: isTemplate,
+		},
+		dataType: schemapb.DataType_Bool,
+	}
+}

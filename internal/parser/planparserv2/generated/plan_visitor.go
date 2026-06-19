@@ -3,9 +3,13 @@
 package planparserv2 // Plan
 import "github.com/antlr4-go/antlr/v4"
 
+
 // A complete Visitor for a parse tree produced by PlanParser.
 type PlanVisitor interface {
 	antlr.ParseTreeVisitor
+
+	// Visit a parse tree produced by PlanParser#AnyAll.
+	VisitAnyAll(ctx *AnyAllContext) interface{}
 
 	// Visit a parse tree produced by PlanParser#String.
 	VisitString(ctx *StringContext) interface{}
@@ -159,4 +163,5 @@ type PlanVisitor interface {
 
 	// Visit a parse tree produced by PlanParser#textMatchOption.
 	VisitTextMatchOption(ctx *TextMatchOptionContext) interface{}
+
 }

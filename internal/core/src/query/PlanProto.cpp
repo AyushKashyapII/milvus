@@ -1080,6 +1080,18 @@ ProtoParser::ParseTermExprs(const proto::plan::TermExpr& expr_pb) {
 }
 
 expr::TypedExprPtr
+ProtoParser::ParseAnyAllExprs(const proto::plan::AnyAllExpr& expr_pb) {
+    auto& column_info = expr_pb.column_info();
+    auto field_id = FieldId(column_info.field_id());
+    auto& field = schema->operator[](field_id);
+    auto data_type = field.get_data_type();
+
+    Assert(data_type == DataType::ARRAY);
+    return std::make_shared<expr::AnyAllFilterExpr>(
+        column_info, expr_pb.op(), expr_pb.is_any(), expr_pb.value());
+}
+
+expr::TypedExprPtr
 ProtoParser::ParseUnaryExprs(const proto::plan::UnaryExpr& expr_pb) {
     auto op = static_cast<expr::LogicalUnaryExpr::OpType>(expr_pb.op());
     Assert(op == expr::LogicalUnaryExpr::OpType::LogicalNot);
@@ -1277,6 +1289,10 @@ ProtoParser::ParseExprs(const proto::plan::Expr& expr_pb,
         }
         case ppe::kMatchExpr: {
             result = ParseMatchExprs(expr_pb.match_expr());
+            break;
+        }
+        case ppe::kAnyAllExpr: {
+            result = ParseAnyAllExprs(expr_pb.any_all_expr());
             break;
         }
         default: {

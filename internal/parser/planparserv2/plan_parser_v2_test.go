@@ -3882,3 +3882,65 @@ func TestExpr_BooleanLiteral(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func Test_AnyAllExpr(t *testing.T) {
+	helper := newTestSchemaHelper(t)
+
+	validExprs := []string{
+		`5 > ANY(ArrayField)`,
+		`5 >= ANY(ArrayField)`,
+		`5 < ANY(ArrayField)`,
+		`5 <= ANY(ArrayField)`,
+		`5 == ANY(ArrayField)`,
+		`5 != ANY(ArrayField)`,
+		`5 > ALL(ArrayField)`,
+		`5 >= ALL(ArrayField)`,
+		`5 < ALL(ArrayField)`,
+		`5 <= ALL(ArrayField)`,
+		`5 == ALL(ArrayField)`,
+		`5 != ALL(ArrayField)`,
+		`"hello" == ANY(StringArrayField)`,
+		`"hello" != ALL(StringArrayField)`,
+	}
+	for _, expr := range validExprs {
+		t.Run(expr, func(t *testing.T) {
+			plan, err := ParseExpr(helper, expr, nil)
+			require.NoError(t, err, "expr: %s", expr)
+			require.NotNil(t, plan.GetAnyAllExpr(), "expected AnyAllExpr for: %s", expr)
+		})
+	}
+
+	// ANY on a non-array field must fail.
+	invalidExprs := []string{
+		`5 > ANY(Int64Field)`,
+		`5 > ANY(JSONField)`,
+	}
+	for _, expr := range invalidExprs {
+		t.Run("invalid_"+expr, func(t *testing.T) {
+			_, err := ParseExpr(helper, expr, nil)
+			assert.Error(t, err, "expr should be invalid: %s", expr)
+		})
+	}
+
+	// Verify is_any flag.
+	t.Run("is_any_flag", func(t *testing.T) {
+		plan, err := ParseExpr(helper, `10 > ANY(ArrayField)`, nil)
+		require.NoError(t, err)
+		require.True(t, plan.GetAnyAllExpr().GetIsAny())
+
+		plan, err = ParseExpr(helper, `10 > ALL(ArrayField)`, nil)
+		require.NoError(t, err)
+		require.False(t, plan.GetAnyAllExpr().GetIsAny())
+	})
+
+	// Verify op type is correctly set.
+	t.Run("op_type", func(t *testing.T) {
+		plan, err := ParseExpr(helper, `5 > ANY(ArrayField)`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, planpb.OpType_GreaterThan, plan.GetAnyAllExpr().GetOp())
+
+		plan, err = ParseExpr(helper, `5 == ANY(ArrayField)`, nil)
+		require.NoError(t, err)
+		assert.Equal(t, planpb.OpType_Equal, plan.GetAnyAllExpr().GetOp())
+	})
+}

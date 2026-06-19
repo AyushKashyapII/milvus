@@ -275,6 +275,17 @@ message MatchExpr {
 
 message AlwaysTrueExpr {}
 
+// AnyAllExpr represents "value CmpOp ANY/ALL (array_field)".
+// is_any=true → ANY (at least one element satisfies the condition).
+// is_any=false → ALL (every element must satisfy the condition).
+message AnyAllExpr {
+  ColumnInfo column_info = 1;          // the array field
+  OpType op = 2;                       // comparison operator
+  bool is_any = 3;                     // true=ANY, false=ALL
+  GenericValue value = 4;             // the scalar value being compared
+  string template_variable_name = 5;  // for query templates
+}
+
 message Interval {
   int64 years = 1;
   int64 months = 2;
@@ -315,6 +326,7 @@ message Expr {
     TimestamptzArithCompareExpr timestamptz_arith_compare_expr = 18;
     ElementFilterExpr element_filter_expr = 19;
     MatchExpr match_expr = 21;
+    AnyAllExpr any_all_expr = 22;
   };
   bool is_template = 20;
 }

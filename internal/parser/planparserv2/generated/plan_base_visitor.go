@@ -3,8 +3,13 @@
 package planparserv2 // Plan
 import "github.com/antlr4-go/antlr/v4"
 
+
 type BasePlanVisitor struct {
 	*antlr.BaseParseTreeVisitor
+}
+
+func (v *BasePlanVisitor) VisitAnyAll(ctx *AnyAllContext) interface{} {
+	return v.VisitChildren(ctx)
 }
 
 func (v *BasePlanVisitor) VisitString(ctx *StringContext) interface{} {

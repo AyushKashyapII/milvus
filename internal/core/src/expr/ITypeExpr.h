@@ -578,6 +578,41 @@ class TermFilterExpr : public ITypeFilterExpr {
     const bool is_in_field_;
 };
 
+class AnyAllFilterExpr : public ITypeFilterExpr {
+ public:
+    explicit AnyAllFilterExpr(const ColumnInfo& column,
+                              proto::plan::OpType op_type,
+                              bool is_any,
+                              const proto::plan::GenericValue& val)
+        : ITypeFilterExpr(),
+          column_(column),
+          op_type_(op_type),
+          is_any_(is_any),
+          val_(val) {
+    }
+
+    std::string
+    ToString() const override {
+        std::stringstream ss;
+        ss << "AnyAllFilterExpr: {columnInfo:" << column_.ToString()
+           << " op_type:" << milvus::proto::plan::OpType_Name(op_type_)
+           << " is_any:" << (is_any_ ? "true" : "false")
+           << " val:" << val_.ShortDebugString() << "}";
+        return ss.str();
+    }
+
+    void
+    GatherInfo(ExprInfo& /*info*/) const override {
+        // AnyAllExpr operates on array fields; skip materialized-view hints.
+    }
+
+ public:
+    const ColumnInfo column_;
+    const proto::plan::OpType op_type_;
+    const bool is_any_;
+    const proto::plan::GenericValue val_;
+};
+
 class LogicalBinaryExpr : public ITypeFilterExpr {
  public:
     enum class OpType { Invalid = 0, And = 1, Or = 2 };
